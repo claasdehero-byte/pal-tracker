@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Praxisanleitung Tracker – MIN-148</title>
+    <meta name="description"
+        content="Praxisanleiter Tracker für Station MIN-148 Pulmologie u. Infektiologie. Verwalten Sie Auszubildende, Gespräche und Anleitungsnachweise zentral im Team.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Status Bar -->
+    <div id="user-bar" class="user-bar">
+        <div class="user-bar-left">
+            <div id="sync-indicator" class="sync-indicator sync-disconnected" title="Verbindungsstatus">
+                <span class="sync-dot"></span>
+                <span id="sync-text" class="sync-label">Verbinde...</span>
+            </div>
+        </div>
+        <div class="user-bar-center">
+            <span class="app-title-bar">📋 PAL Tracker · MIN-148</span>
+        </div>
+        <div class="user-bar-right">
+            <span id="last-sync-time" class="sync-label" style="font-size: 11px;"></span>
+        </div>
+    </div>
+
+    <!-- Migration Banner (wird angezeigt wenn localStorage-Daten existieren) -->
+    <div id="migration-banner" class="migration-banner hidden">
+        <span>📦 Lokale Daten gefunden! Möchten Sie diese in Google Sheets importieren?</span>
+        <button id="import-data-btn" class="btn-primary btn-sm">Importieren</button>
+        <button id="dismiss-migration-btn" class="btn-ghost btn-sm">Später</button>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar: Student Management -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Azubi Tracker</h1>
+                <button id="add-student-btn" class="btn-primary">
+                    <span class="icon">+</span> Azubi hinzufügen
+                </button>
+            </div>
+
+            <div class="student-list-container">
+                <h2>Aktuelle Auszubildende</h2>
+                <ul id="student-list" class="student-list">
+                    <!-- Students will be injected here -->
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Content: Month View & Operations -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="current-period">
+                    <button id="prev-month">&lt;</button>
+                    <h2 id="month-display">Februar 2026</h2>
+                    <button id="next-month">&gt;</button>
+                </div>
+                <div id="active-student-badge" class="active-student-badge hidden">
+                    Ausgewählt: <span id="active-student-name"></span>
+                </div>
+            </header>
+
+            <div class="content-grid">
+                <!-- Calendar View -->
+                <section class="calendar-section">
+                    <div class="calendar-header">
+                        <div class="day-label">Mo</div>
+                        <div class="day-label">Di</div>
+                        <div class="day-label">Mi</div>
+                        <div class="day-label">Do</div>
+                        <div class="day-label">Fr</div>
+                        <div class="day-label">Sa</div>
+                        <div class="day-label">So</div>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid">
+                        <!-- Calendar days will be injected here -->
+                    </div>
+                </section>
+
+                <!-- Milestone Detail View -->
+                <section id="milestone-section" class="milestone-section hidden">
+                    <div class="student-progress-card">
+                        <h3>Fortschritt</h3>
+                        <div class="progress-container">
+                            <div id="progress-bar-fill" class="progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <p id="progress-text">0/0 Arbeitsaufträge abgeschlossen (0%)</p>
+                    </div>
+
+                    <div class="milestones-container">
+                        <h3>Gespräche (LAGeSo)</h3>
+
+                        <div class="milestone-card" data-type="intro">
+                            <div class="milestone-header">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="check-intro">
+                                    <span class="checkmark"></span>
+                                    Einführungsgespräch
+                                </label>
+                            </div>
+                            <div class="milestone-details">
+                                <div class="form-row">
+                                    <div class="form-group-inline">
+                                        <label>Datum</label>
+                                        <input type="date" id="intro-date">
+                                    </div>
+                                    <div class="form-group-inline">
+                                        <label>Anleiter</label>
+                                        <select id="intro-mentor">
+                                            <option value="">Wählen...</option>
+                                            <option value="Katrin Schulze">Katrin Schulze</option>
+                                            <option value="Dominique Büttner">Dominique Büttner</option>
+                                            <option value="Armand Murataj">Armand Murataj</option>
+                                            <option value="Claus Clemens">Claus Clemens</option>
+                                            <option value="Gilles Willet">Gilles Willet</option>
+                                            <option value="Almedina Pilav">Almedina Pilav</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <textarea id="intro-notes" placeholder="Notizen zum Gespräch..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="milestone-card" data-type="intermediate">
+                            <div class="milestone-header">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="check-intermediate">
+                                    <span class="checkmark"></span>
+                                    Zwischengespräch
+                                </label>
+                            </div>
+                            <div class="milestone-details">
+                                <div class="form-row">
+                                    <div class="form-group-inline">
+                                        <label>Geplant am</label>
+                                        <input type="date" id="intermediate-geplant">
+                                    </div>
+                                    <div class="form-group-inline">
+                                        <label>Durchgeführt am</label>
+                                        <input type="date" id="intermediate-date">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group-inline" style="grid-column: span 2;">
+                                        <label>Anleiter</label>
+                                        <select id="intermediate-mentor">
+                                            <option value="">Wählen...</option>
+                                            <option value="Katrin Schulze">Katrin Schulze</option>
+                                            <option value="Dominique Büttner">Dominique Büttner</option>
+                                            <option value="Armand Murataj">Armand Murataj</option>
+                                            <option value="Claus Clemens">Claus Clemens</option>
+                                            <option value="Gilles Willet">Gilles Willet</option>
+                                            <option value="Almedina Pilav">Almedina Pilav</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <textarea id="intermediate-notes" placeholder="Notizen zum Gespräch..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="milestone-card" data-type="final">
+                            <div class="milestone-header">
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="check-final">
+                                    <span class="checkmark"></span>
+                                    Abschlussgespräch
+                                </label>
+                            </div>
+                            <div class="milestone-details">
+                                <div class="form-row">
+                                    <div class="form-group-inline">
+                                        <label>Geplant am</label>
+                                        <input type="date" id="final-geplant">
+                                    </div>
+                                    <div class="form-group-inline">
+                                        <label>Durchgeführt am</label>
+                                        <input type="date" id="final-date">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group-inline" style="grid-column: span 2;">
+                                        <label>Anleiter</label>
+                                        <select id="final-mentor">
+                                            <option value="">Wählen...</option>
+                                            <option value="Katrin Schulze">Katrin Schulze</option>
+                                            <option value="Dominique Büttner">Dominique Büttner</option>
+                                            <option value="Armand Murataj">Armand Murataj</option>
+                                            <option value="Claus Clemens">Claus Clemens</option>
+                                            <option value="Gilles Willet">Gilles Willet</option>
+                                            <option value="Almedina Pilav">Almedina Pilav</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <textarea id="final-notes" placeholder="Notizen zum Gespräch..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="assignments-section">
+                        <h3>Arbeitsaufträge</h3>
+                        <div id="assignment-list" class="assignment-list">
+                            <!-- Assignments will be injected here -->
+                        </div>
+
+                        <div class="assignment-controls">
+                            <select id="assignment-dropdown">
+                                <option value="">Aufgabe auswählen...</option>
+                                <option value="1. Arbeitsaufgabe Ambulante Versorgung, Anhang Formblatt">1. Ambulante
+                                    Versorgung</option>
+                                <option
+                                    value="2. Arbeitsaufgabe Anleitung von Angehörigen als edukative Handlungssituation">
+                                    2. Anleitung Angehörige</option>
+                                <option value="3. Arbeitsaufgabe Blutentnahme">3. Blutentnahme</option>
+                                <option value="4. Arbeitsaufgabe Blutzuckermessung und Auswertung">4. Blutzucker
+                                </option>
+                                <option value="5. Arbeitsaufgabe Gastrointestinale Sonde">5. Gastrointestinale Sonde
+                                </option>
+                                <option value="6. Arbeitsaufgabe Herstellung einer Infusion">6. Infusion herstellen
+                                </option>
+                                <option value="7. Arbeitsaufgabe Herstellung einer Inhalation">7. Inhalation herstellen
+                                </option>
+                                <option value="8. Arbeitsaufgabe Körperpflege">8. Körperpflege</option>
+                                <option value="9. Arbeitsaufgabe Langzeitstationäre Versorgung, Anhang Formblatt">9.
+                                    Langzeitversorgung</option>
+                                <option value="10. Arbeitsaufgabe Legen eines transurethralen Blasenkatheters">10.
+                                    Blasenkatheter (transurethral)</option>
+                                <option
+                                    value="11. Arbeitsaufgabe Magenspülung nach Lippen-Kiefer-Gaumenspalten-Operation">
+                                    11. Magenspülung (LKGS)</option>
+                                <option value="12. Arbeitsaufgabe Mobilisation">12. Mobilisation</option>
+                                <option value="13. Arbeitsaufgabe Patient*innenbeobachtung">13. Patient*innenbeobachtung
+                                </option>
+                                <option value="14. Arbeitsaufgabe Patient*innenvorstellung">14. Patient*innenvorstellung
+                                </option>
+                                <option value="15. Arbeitsaufgabe Pflegeanamnesegespräch">15. Pflegeanamnesegespräch
+                                </option>
+                                <option value="16. Arbeitsaufgabe prä- und postoperative Pflege">16. Prä-/Postoperative
+                                    Pflege</option>
+                                <option value="17. Arbeitsaufgabe Prophylaxe">17. Prophylaxe</option>
+                                <option
+                                    value="18. Arbeitsaufgabe Qualitätssicherung im Pflegeprozess (Zwischenprüfung)">18.
+                                    Qualitätssicherung (Zwischenprüfung)</option>
+                                <option value="19. Arbeitsaufgabe s.c. Injektion">19. s.c. Injektion</option>
+                                <option value="20. Arbeitsaufgabe Schmerzeinschätzung">20. Schmerzeinschätzung</option>
+                                <option value="21. Arbeitsaufgabe Stomaversorgung">21. Stomaversorgung</option>
+                                <option
+                                    value="22. Arbeitsaufgabe Teespülung nach Lippen - Kiefer - Gaumenspaltenoperation">
+                                    22. Teespülung (LKGS)</option>
+                                <option value="23. Arbeitsaufgabe Tracheostomapflege">23. Tracheostomapflege</option>
+                                <option value="24. Arbeitsaufgabe Tubus">24. Tubus</option>
+                                <option value="25. Arbeitsaufgabe Verabreichen von Medikationen">25. Medikationen
+                                    verabreichen</option>
+                                <option value="26. Arbeitsaufgabe Verbandswechsel Broviac - bzw. Hickmann - Katheter">
+                                    26. Verbandswechsel Broviac/Hickman</option>
+                                <option value="27. Arbeitsaufgabe Vitalzeichenkontrolle">27. Vitalzeichenkontrolle
+                                </option>
+                                <option value="28. Arbeitsaufgabe Wundmanagement">28. Wundmanagement</option>
+                            </select>
+                            <button id="add-assignment-btn" class="btn-secondary">+ Hinzufügen</button>
+                        </div>
+                    </div>
+
+                    <!-- NEW: Anleitungsnachweis Button -->
+                    <div class="doc-trigger-section" style="margin-top: 24px;">
+                        <button id="open-doc-btn" class="btn-secondary"
+                            style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <span style="font-size: 1.2em;">📋</span> Anleitungsnachweis führen
+                        </button>
+                    </div>
+
+                    <button id="save-all-btn" class="btn-primary" style="margin-top: 24px;">Alles Speichern</button>
+                    <button id="export-pdf-btn" class="btn-ghost" style="width: 100%; margin-top: 12px;">PDF
+                        Export</button>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- NEW: Document Modal (Anleitungsnachweis) -->
+    <div id="doc-modal" class="modal hidden">
+        <div class="modal-content doc-modal-content">
+            <div class="doc-modal-header">
+                <h3>Anleitungsnachweis</h3>
+                <button id="close-doc-btn" class="btn-close">✕</button>
+            </div>
+
+            <div id="document-view" class="document-view">
+                <!-- Header Image -->
+                <div class="doc-print-header">
+                    <img src="charite-header.png" alt="Charité Logo" class="doc-header-img">
+                </div>
+
+                <!-- Header Table -->
+                <table class="doc-table header-table">
+                    <tr>
+                        <td class="label-cell">Bereich</td>
+                        <td class="input-cell" colspan="3">
+                            <input type="text" id="doc-bereich" value="MIN-148 Pulmologie u. Infektiologie">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Auszubildende/r</td>
+                        <td class="input-cell" colspan="3">
+                            <input type="text" id="doc-student-name" readonly>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-cell">Monat / Jahr</td>
+                        <td class="input-cell">
+                            <input type="text" id="doc-monat-jahr" placeholder="z.B. Januar 2025">
+                        </td>
+                        <td class="label-cell">Kurs-Nr.</td>
+                        <td class="input-cell">
+                            <input type="text" id="doc-kurs-nr" placeholder="Freitext...">
+                        </td>
+                    </tr>
+                </table>
+
+                <div class="doc-info-box">
+                    Verpflichtend sind 15% Anleitung pro Auszubildender und Einsatz (entspricht 5,7h/ Woche)
+                </div>
+
+                <!-- Main Documentation Table -->
+                <table class="doc-table main-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Tag / Datum</th>
+                            <th style="width: 80px;">Minuten</th>
+                            <th style="width: 180px;">Praxisanleitung</th>
+                            <th>Anleitungssituation / Gespräche</th>
+                            <th class="no-print" style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="doc-table-body">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+
+                <button id="add-doc-row-btn" class="btn-secondary no-print" style="margin-top: 8px;">+ Zeile
+                    hinzufügen</button>
+
+                <!-- Bemerkung -->
+                <div class="doc-bemerkung">
+                    <label>Bemerkung:</label>
+                    <textarea id="doc-bemerkung" placeholder="Allgemeine Anmerkungen..."></textarea>
+                </div>
+
+                <!-- Summary Box (No-print in PDF if requested, but user said "nur im digitalen Tool sichtbar") -->
+                <div id="doc-summary" class="doc-summary-box no-print">
+                    <h4>ZUSAMMENFASSUNG</h4>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <span>Gesamtanleitungszeit:</span>
+                            <strong id="stat-total-min">0</strong> Min (<strong id="stat-total-hrs">0</strong> h)
+                        </div>
+                        <div class="summary-item">
+                            <span>Einsatzdauer:</span>
+                            <strong id="stat-weeks">0</strong> Wochen
+                        </div>
+                        <div class="summary-item">
+                            <span>Soll (5,7h/Woche):</span>
+                            <strong id="stat-soll-hrs">0</strong> h (<strong id="stat-soll-min">0</strong> Min)
+                        </div>
+                    </div>
+                    <div id="doc-status-msg" class="doc-status-msg">
+                        <!-- Filled by JS -->
+                    </div>
+                    <div class="progress-container" style="height: 12px; margin-top: 12px;">
+                        <div id="doc-progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="doc-footer-notes">
+                    <p>ℹ️ Interner Einsatz: Bitte an zuständige:n Zentralen Praxisanleiter:in senden!</p>
+                    <p>ℹ️ Externer Einsatz: Bitte an ek-praxisdokumente@charite.de senden!</p>
+                </div>
+
+                <!-- Signature fields (bottom of document) -->
+                <div class="doc-signatures">
+                    <div class="sig-field">
+                        <div class="sig-line"></div>
+                        <span>Unterschrift Auszubildende/r</span>
+                    </div>
+                    <div class="sig-field">
+                        <div class="sig-line"></div>
+                        <span>Unterschrift Praxisanleiter/in</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions doc-modal-actions no-print">
+                <button id="save-doc-btn" class="btn-primary">💾 Speichern</button>
+                <button id="print-doc-btn" class="btn-secondary">🖨️ Drucken / PDF</button>
+            </div>
+        </div>
+    </div>
+    <div id="student-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Azubi hinzufügen</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="student-vorname">Vorname</label>
+                    <input type="text" id="student-vorname" placeholder="Vorname">
+                </div>
+                <div class="form-group">
+                    <label for="student-nachname">Nachname</label>
+                    <input type="text" id="student-nachname" placeholder="Nachname">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="student-start">Einsatz Beginn</label>
+                    <input type="date" id="student-start">
+                </div>
+                <div class="form-group">
+                    <label for="student-ende">Einsatz Ende</label>
+                    <input type="date" id="student-ende">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="student-lehrjahr">Lehrjahr</label>
+                <select id="student-lehrjahr">
+                    <option value="" disabled selected>Auswählen...</option>
+                    <option value="1">1. Lehrjahr</option>
+                    <option value="2">2. Lehrjahr</option>
+                    <option value="3">3. Lehrjahr</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="student-color">Farbe zuordnen</label>
+                <div class="color-picker-grid">
+                    <div class="color-option active" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                    <div class="color-option" style="background-color: #10b981;" data-color="#10b981"></div>
+                    <div class="color-option" style="background-color: #f59e0b;" data-color="#f59e0b"></div>
+                    <div class="color-option" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                    <div class="color-option" style="background-color: #8b5cf6;" data-color="#8b5cf6"></div>
+                    <div class="color-option" style="background-color: #ec4899;" data-color="#ec4899"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="cancel-student" class="btn-ghost">Abbrechen</button>
+                <button id="save-student" class="btn-primary">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="confirm-title">Löschen bestätigen</h3>
+            <p id="confirm-message" style="margin-bottom: 24px; color: var(--text-muted);"></p>
+            <div class="modal-actions">
+                <button id="confirm-cancel" class="btn-ghost"
+                    style="width: auto; padding: 10px 20px;">Abbrechen</button>
+                <button id="confirm-ok" class="btn-primary"
+                    style="background-color: #ef4444; width: auto; padding: 10px 20px;">Löschen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Sheets API Integration -->
+    <script src="google-sheets-api.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
